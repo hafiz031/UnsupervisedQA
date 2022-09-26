@@ -7,9 +7,11 @@
 """
 Main interface to user
 """
+from asyncio.log import logger
 import attr
 import argparse
 import os
+import logging
 from .configs import UNMT_MODEL_SENTENCE_NE, \
     UNMT_MODEL_SENTENCE_NP, UNMT_MODEL_SUBCLAUSE_NE, \
     UNMT_MODEL_SUBCLAUSE_NE_WH_HEURISTIC
@@ -80,7 +82,7 @@ def get_questions_for_clozes(clozes,
 
 
 def generate_synthetic_training_data(args):
-    _check_args(args)
+    _check_args(args) # checking if arguments are valid
 
     with open(args.input_file) as f:
         if args.input_file_format == 'jsonl':
@@ -90,15 +92,39 @@ def generate_synthetic_training_data(args):
         paragraphs = list(paragraphs)
 
     print('=' * 50)
-    print(f'Parsed {len(paragraphs)} paragraphs from {args.input_file}')
+    print(f'Parsed {len(paragraphs)} paragraphs from {args.input_file}') # calculating how many paragraphs are there
     print('=' * 50)
 
     # Create clozes:
+    # use Named Entity or Noun Phrase based answer generator, they both basically returns some key phrases/
+    # tokens targeting which a question can be formed, assuming that these phrases/tokens are the answer of those
+    # generated questions.
     answer_generator = ne_answer_gen if args.use_named_entity_clozes else np_answer_gen
+    # Just like a typical cloze statements, it basically takes some sentence and replace the
+    # targeted tokens/phrase with its entity type name.
     clozes = [c for p in paragraphs for c in generate_clozes_from_paragraph(p, answer_generator)]
+    
+    # print(f"CLOZES: {clozes}")
+    """
+    A sample Cloze: (Note that here constituency_parse is None...as we don't enable it right now)
+    -----------------------------------------------------------------------------------
+    Cloze(cloze_id='55622000e9486bfb321cdcabb8b3bf9e4163d36a', 
+    paragraph=Paragraph(paragraph_id='ff7f0c796cc44b1dbeb821ccd8fda74c1fab7b66',
+    text="CBS' broadcast of the game was the third most-watched program in American television history 
+    with an average of 111.9 million viewers. The network charged an average of $5 million for a 30-second 
+    commercial during the game.[12][13] It remains the highest-rated program in the history of CBS. The Super 
+    Bowl 50 halftime show was headlined by Coldplay,[14] with special guest performers Beyoncé and Bruno Mars."), 
+    source_text='The Super Bowl 50 halftime show was headlined by Coldplay,[14] with special guest performers 
+    Beyoncé and Bruno Mars.', source_start=292, cloze_text='The Super Bowl 50 halftime show was headlined by Coldplay,
+    [14] with special guest performers IDENTITYMASK and Bruno Mars.', answer_text='Beyoncé', answer_start=93, 
+    constituency_parse=None, root_label=None, answer_type='NORP', question_text=None)
+    """
 
-    if args.use_subclause_clozes:
+    if args.use_subclause_clozes: # If constituency_parse is enabled
+        # As the selected clozes may contain unnecessary parts, so using splitting it to its
+        # constituent and getting the minimum portion which contains the question.
         syntax_clozes = get_constituency_parsed_clozes(clozes)
+        # print(f"syntax_clozes: {list(syntax_clozes)}") # WARNING: printing this will make "syntax_clozes" empty and the next step won't work
         clozes = [short_cloze for cloze in syntax_clozes for short_cloze in shorten_cloze(cloze)]
         #clozes = list(get_constituency_parsed_clozes(clozes))
     print('=' * 50)
@@ -116,6 +142,7 @@ def generate_synthetic_training_data(args):
     # filter generations
     clozes_with_questions = [
         c for c in clozes_with_questions
+        # Passing under some sanity checking (mostly length checking)
         if is_appropriate_squad_datapoint(c.question_text, c.answer_text, c.paragraph.text)
     ]
 

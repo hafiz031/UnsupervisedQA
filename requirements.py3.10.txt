@@ -1,0 +1,6 @@
+nltk
+numpy
+torch
+spacy
+attrs
+allennlp

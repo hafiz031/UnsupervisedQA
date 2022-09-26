@@ -1,0 +1,4 @@
+--2022-09-25 13:37:27--  https://s3-us-west-2.amazonaws.com/allennlp/models/elmo-constituency-parser-2018.03.14.tar.gz
+Resolving s3-us-west-2.amazonaws.com (s3-us-west-2.amazonaws.com)... 52.218.152.24
+Connecting to s3-us-west-2.amazonaws.com (s3-us-west-2.amazonaws.com)|52.218.152.24|:443... connected.
+Unable to establish SSL connection.

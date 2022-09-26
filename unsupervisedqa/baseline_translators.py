@@ -50,8 +50,10 @@ def _add_noise(words, noiser_params):
 
 def _get_wh_word(cloze, wh_heuristic):
     if wh_heuristic:
+        # Taking WH word depending on the type of NER (say Who for PERSON)...choosing randomly from candidates
         repl = random.choice(HEURISTIC_CLOZE_TYPE_QUESTION_MAP[cloze.answer_type])
     else:
+        # Without any heuristic, just choosing randomly
         repl = random.choice(['Who', 'What', 'When', 'Where', 'How'])
     return repl
 
@@ -78,6 +80,7 @@ def noisy_cloze_translation(cloze, wh_heuristic):
 
 
 def identity_translation(cloze, wh_heuristic):
+    # a heuristic approach...simply replacing the mask by an appropriate question word and appending a question mark.
     repl = _get_wh_word(cloze, wh_heuristic)
     q = _replace_mask(cloze, repl)
     return _add_q_mark_and_fix_spaces(q)

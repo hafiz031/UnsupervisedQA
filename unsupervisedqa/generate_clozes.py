@@ -26,14 +26,77 @@ def mask_answer(text, answer_text, answer_start, answer_type):
 
 
 def noun_phrase_answer_generator(sent):
+    """
+    REF: https://spacy.io/api/doc#sents
+    Returns non nested noun (/noun phrases)
+
+    In [2]: text = "CBS' broadcast of the game was the third most-watched program in
+   ...:  American television history with an average of 111.9 million viewers. T
+   ...: he network charged an average of $5 million for a 30-second commercial d
+   ...: uring the game.[12][13] It remains the highest-rated program in the hist
+   ...: ory of CBS. The Super Bowl 50 halftime show was headlined by Coldplay,[1
+   ...: 4] with special guest performers Beyoncé and Bruno Mars."
+
+    In [3]: nlp = spacy.load('en_core_web_sm')
+
+    In [4]: doc = nlp(text)
+
+    In [5]: for noun_chunk in doc.noun_chunks:
+    ...:     print(noun_chunk.text)
+    ...: 
+    CBS' broadcast
+    the game
+    the third most-watched program
+    American television history
+    an average
+    111.9 million viewers
+    The network
+    an average
+    a 30-second commercial
+    the game.[12][13
+    It
+    the highest-rated program
+    the history
+    CBS
+    The Super Bowl
+    50 halftime show
+    Coldplay,[14
+    special guest performers
+    Beyoncé
+    Bruno Mars
+
+    """
     return [(n_p.text, n_p.start_char - sent.start_char, NOUNPHRASE_LABEL) for n_p in sent.noun_chunks]
 
 
 def named_entity_answer_generator(sent):
+    """
+    REF: https://spacy.io/api/doc#ents
+    It returns named entities.
+
+    In [6]: for noun_chunk in doc.ents:
+    ...:     print(noun_chunk.text)
+    ...: 
+    CBS
+    third
+    American
+    111.9 million
+    $5 million
+    30-second
+    CBS
+    The Super Bowl
+    Beyoncé
+    Bruno Mars
+
+    """
     return [(e.text, e.start_char - sent.start_char, e.label_) for e in sent.ents]
 
 
 def is_appropriate_cloze(sentence):
+    """
+    checks sentence length is within range, doesn't have a link inside
+    also each of the tokens (and numbers) are within certain length range.
+    """
     good_char_len = MIN_CLOZE_CHAR_LEN < len(sentence) < MAX_CLOZE_CHAR_LEN
     no_links = not (('https://' in sentence) or ('http://' in sentence))
     tokens = sentence.split()
@@ -74,9 +137,11 @@ def generate_clozes_from_paragraph(paragraph, answer_generator):
     clozes = []
     para_doc = nlp(paragraph.text)
     for sentence in para_doc.sents:
+        # if meets allowed lengths for sentence, token, number and not containing a link
         is_good = is_appropriate_cloze(sentence.text)
         if is_good:
-            answers = answer_generator(sentence)
+            # Named entity or noun phrase answer generation (according to configuration)
+            answers = answer_generator(sentence) 
             for answer_text, answer_start, answer_type in answers:
                 if is_appropriate_answer(answer_text):
                     yield Cloze(
